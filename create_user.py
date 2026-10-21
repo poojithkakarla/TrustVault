@@ -7,14 +7,16 @@ username = input("Enter username: ").strip()
 password = input("Enter password: ")
 
 print("Choose role:")
-print("1. Owner")
-print("2. Viewer")
+print("1. Admin")
+print("2. Owner")
+print("3. Viewer")
 
 choice = input("Enter 1 or 2: ").strip()
 
 roles = {
-    "1": "owner",
-    "2": "viewer",
+    "1": "admin",
+    "2": "owner",
+    "3": "viewer",
 }
 
 role = roles.get(choice)
