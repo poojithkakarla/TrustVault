@@ -1,0 +1,63 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustVault Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .login-box {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            width: 320px;
+            box-shadow: 0 4px 16px #00000015;
+        }
+        h1 { color: #1d4ed8; text-align: center; }
+        label { display: block; margin-top: 16px; }
+        input {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 10px;
+            margin-top: 6px;
+        }
+        button {
+            width: 100%;
+            margin-top: 20px;
+            padding: 12px;
+            background: #1d4ed8;
+            color: white;
+            border: 0;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>🔐 TrustVault</h1>
+        <p>Secure Document Sharing</p>
+
+        <form method="POST" action="/login">
+            <label for="username">Username</label>
+            <input id="username" name="username"
+                   required autocomplete="username">
+
+            <label for="password">Password</label>
+            <input id="password" name="password"
+                   type="password" required
+                   autocomplete="current-password">
+
+            <button type="submit">Login</button>
+        </form>
+    </div>
+</body>
+</html>

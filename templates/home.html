@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustVault Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f6f9;
+            color: #222;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+            padding: 25px;
+            background-color: white;
+            border-radius: 10px;
+        }
+
+        h1 {
+            color: #173b70;
+        }
+
+        button {
+            padding: 10px 16px;
+            margin: 8px 5px 8px 0;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #2457a7;
+            color: white;
+        }
+
+        button:hover {
+            background-color: #173b70;
+        }
+
+        .logout {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1>🔐 TrustVault</h1>
+        <h2>Secure Document Sharing</h2>
+
+        {% if session.get('username') %}
+
+            <p>Welcome, {{ session.get('username', '') }}!</p>
+
+            <hr>
+
+            <h3>Document Dashboard</h3>
+            <p>Your secure document workspace.</p>
+
+            <a href="{{ url_for('upload_document') }}">
+                <button type="button">Upload Document</button>
+            </a>
+
+            <a href="{{ url_for('view_documents') }}">
+                <button type="button">View Documents</button>
+            </a>
+
+            <hr>
+
+            <p>Role: {{ session.get('role', '') }}</p>
+
+            <form action="{{ url_for('logout') }}" method="POST">
+                <button type="submit" class="logout">Logout</button>
+            </form>
+
+        {% else %}
+
+            <p>Please log in to access your documents.</p>
+
+            <form action="{{ url_for('login') }}" method="POST">
+                <label for="username">Username:</label><br>
+                <input type="text" id="username" name="username" required>
+                <br><br>
+
+                <label for="password">Password:</label><br>
+                <input type="password" id="password" name="password" required>
+                <br><br>
+
+                <button type="submit">Login</button>
+            </form>
+
+        {% endif %}
+
+    </div>
+</body>
+</html>
+
