@@ -26,6 +26,7 @@ from database import (
 )
 
 app = Flask(__name__)
+init_db()
 
 # Development secret. Set TRUSTVAULT_SECRET_KEY in deployment.
 app.secret_key = (

@@ -1,8 +1,8 @@
 
 import sqlite3
+from pathlib import Path
 
-DATABASE_NAME = "trustvault.db"
-
+DATABASE_NAME = str(Path(__file__).resolve().parent / "trustvault.db")
 
 def get_db_connection():
     connection = sqlite3.connect(DATABASE_NAME)
