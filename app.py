@@ -1,34 +1,22 @@
-
 import os
 import sqlite3
 import secrets
 from pathlib import Path
 
 from flask import (
-    Flask,
-    request,
-    redirect,
-    session,
-    url_for,
-    abort,
-    send_file,
-    render_template,
-    render_template_string,
+    Flask, request, redirect, session, url_for,
+    abort, send_file, render_template, render_template_string
 )
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 from database import (
-    init_db,
-    get_db_connection,
-    add_audit_log,
-    get_audit_logs,
+    init_db, get_db_connection, add_audit_log, get_audit_logs
 )
 
 app = Flask(__name__)
 init_db()
 
-# Development secret. Set TRUSTVAULT_SECRET_KEY in deployment.
 app.secret_key = (
     os.environ.get("TRUSTVAULT_SECRET_KEY")
     or secrets.token_hex(32)
@@ -47,6 +35,37 @@ ALLOWED_EXTENSIONS = {
 }
 
 
+def ensure_deployment_admin():
+    username = os.environ.get("TRUSTVAULT_ADMIN_USERNAME", "").strip()
+    password = os.environ.get("TRUSTVAULT_ADMIN_PASSWORD", "")
+
+    if not username or not password:
+        return
+
+    connection = get_db_connection()
+    try:
+        existing = connection.execute(
+            "SELECT id FROM users WHERE role = 'admin' LIMIT 1"
+        ).fetchone()
+
+        if existing is None:
+            connection.execute(
+                """
+                INSERT INTO users (username, password_hash, role)
+                VALUES (?, ?, 'admin')
+                """,
+                (username, generate_password_hash(password)),
+            )
+            connection.commit()
+    except sqlite3.IntegrityError:
+        connection.rollback()
+    finally:
+        connection.close()
+
+
+ensure_deployment_admin()
+
+
 def current_user():
     user_id = session.get("user_id")
     if user_id is None:
@@ -55,10 +74,7 @@ def current_user():
     connection = get_db_connection()
     try:
         return connection.execute(
-            """
-            SELECT id, username, role
-            FROM users WHERE id = ?
-            """,
+            "SELECT id, username, role FROM users WHERE id = ?",
             (user_id,),
         ).fetchone()
     finally:
@@ -115,9 +131,7 @@ def can_access_document(user, document):
 
 def can_manage_sharing(user, document):
     return bool(
-        user
-        and document
-        and (
+        user and document and (
             user["role"] == "admin"
             or (
                 user["role"] == "owner"
@@ -145,7 +159,7 @@ def home():
             <title>TrustVault Dashboard</title>
         </head>
         <body>
-            <h1>🔐 TrustVault</h1>
+            <h1>TrustVault</h1>
             <h2>Secure Document Sharing</h2>
             <p>Welcome, {{ username }}!</p>
             <p>Role: {{ role }}</p>
@@ -190,21 +204,16 @@ def login():
         log_action("LOGIN")
         return redirect(url_for("home"))
 
-    # Do not reveal whether the username or password was incorrect.
-    # Record failed login attempts without exposing account details.
-    connection = get_db_connection()
-    try:
-        if user:
+    if user:
+        connection = get_db_connection()
+        try:
             connection.execute(
-                """
-                INSERT INTO audit_logs (user_id, action)
-                VALUES (?, ?)
-                """,
+                "INSERT INTO audit_logs (user_id, action) VALUES (?, ?)",
                 (user["id"], "LOGIN_FAILED"),
             )
             connection.commit()
-    finally:
-        connection.close()
+        finally:
+            connection.close()
 
     return "Invalid username or password.", 401
 
@@ -264,10 +273,8 @@ def upload_document():
             (original_filename, stored_filename, user["id"]),
         )
         document_id = cursor.lastrowid
-
         file.save(save_path)
         connection.commit()
-
     except Exception:
         connection.rollback()
         if save_path.exists():
@@ -303,7 +310,6 @@ def view_documents():
                 FROM documents ORDER BY id DESC
                 """
             ).fetchall()
-
         elif user["role"] == "owner":
             documents = connection.execute(
                 """
@@ -313,15 +319,12 @@ def view_documents():
                 """,
                 (user["id"],),
             ).fetchall()
-
         else:
             documents = connection.execute(
                 """
-                SELECT d.id, d.original_filename,
-                       d.owner_id, d.uploaded_at
+                SELECT d.id, d.original_filename, d.owner_id, d.uploaded_at
                 FROM documents d
-                JOIN document_permissions p
-                  ON p.document_id = d.id
+                JOIN document_permissions p ON p.document_id = d.id
                 WHERE p.user_id = ?
                 ORDER BY d.id DESC
                 """,
@@ -342,8 +345,10 @@ def view_documents():
                 {{ doc["original_filename"] }}
                 — <a href="{{ url_for('open_document', document_id=doc['id']) }}">Open</a>
                 {% if role == 'admin' or
-                      (role == 'owner' and doc['owner_id'] == user_id) %}
-                — <a href="{{ url_for('share_document', document_id=doc['id']) }}">Share / Manage Access</a>
+                    (role == 'owner' and doc['owner_id'] == user_id) %}
+                — <a href="{{ url_for('share_document', document_id=doc['id']) }}">
+                    Share / Manage Access
+                  </a>
                 {% endif %}
             </li>
         {% endfor %}
@@ -378,7 +383,6 @@ def open_document(document_id):
         abort(404)
 
     log_action("DOCUMENT_OPEN", document_id)
-
     return send_file(
         file_path,
         as_attachment=False,
@@ -406,7 +410,6 @@ def share_document(document_id):
     try:
         if request.method == "POST":
             username = request.form.get("username", "").strip()
-
             target = connection.execute(
                 "SELECT id, role FROM users WHERE username = ?",
                 (username,),
@@ -430,9 +433,9 @@ def share_document(document_id):
                 return "This viewer already has access.", 409
 
             log_action("DOCUMENT_ACCESS_GRANTED", document_id)
-            return redirect(
-                url_for("share_document", document_id=document_id)
-            )
+            return redirect(url_for(
+                "share_document", document_id=document_id
+            ))
 
         viewers = connection.execute(
             """
@@ -455,15 +458,14 @@ def share_document(document_id):
             <input name="username" required>
             <button type="submit">Grant Access</button>
         </form>
-
         <h3>Users with access</h3>
         <ul>
         {% for viewer in viewers %}
             <li>
                 {{ viewer["username"] }}
                 <form method="POST"
-                      action="{{ url_for('revoke_document_access',
-                                         document_id=document_id) }}">
+                    action="{{ url_for('revoke_document_access',
+                                       document_id=document_id) }}">
                     <input type="hidden" name="username"
                            value="{{ viewer['username'] }}">
                     <button type="submit">Revoke Access</button>
@@ -520,9 +522,9 @@ def revoke_document_access(document_id):
         connection.close()
 
     log_action("DOCUMENT_ACCESS_REVOKED", document_id)
-    return redirect(
-        url_for("share_document", document_id=document_id)
-    )
+    return redirect(url_for(
+        "share_document", document_id=document_id
+    ))
 
 
 @app.route("/admin/audit-logs")
@@ -577,5 +579,4 @@ def file_too_large(error):
 
 
 if __name__ == "__main__":
-    init_db()
     app.run(debug=True)
