@@ -217,7 +217,57 @@ def login():
 
     return "Invalid username or password.", 401
 
+@app.route("/admin/create-viewer", methods=["GET", "POST"])
+def create_viewer():
+    if session.get("role") != "admin":
+        return "Access denied", 403
 
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+
+        if not username or not password:
+            return "Username and password are required.", 400
+
+        if len(password) < 8:
+            return "Password must be at least 8 characters.", 400
+
+        connection = get_db_connection()
+        try:
+            existing_user = connection.execute(
+                "SELECT id FROM users WHERE username = ?",
+                (username,),
+            ).fetchone()
+
+            if existing_user:
+                return "Username already exists.", 409
+
+            connection.execute(
+                """
+                INSERT INTO users (username, password_hash, role)
+                VALUES (?, ?, 'viewer')
+                """,
+                (username, generate_password_hash(password)),
+            )
+            connection.commit()
+
+        finally:
+            connection.close()
+
+        return "Viewer account created successfully. You can now log in."
+
+    return """
+    <h2>Create Viewer Account</h2>
+    <form method="POST">
+        <label>Viewer Username:</label>
+        <input name="username" required>
+        <br><br>
+        <label>Viewer Password:</label>
+        <input name="password" type="password" minlength="8" required>
+        <br><br>
+        <button type="submit">Create Viewer</button>
+    </form>
+    """
 @app.route("/logout", methods=["POST"])
 def logout():
     if "user_id" in session:
